@@ -1,4 +1,151 @@
-using System;
+        private void CreateSQLiteDatabase()
+        {
+            Console.WriteLine("Creating SQLite database and tables...");
+            
+            sqliteConnection.Open();
+            
+            string createTablesScript = @"
+                -- ENABLE FOREIGN KEY CONSTRAINTS
+                PRAGMA FOREIGN_KEYS = ON;
+
+                -- 1. PARAMETER NAMES LOOKUP TABLE
+                CREATE TABLE IF NOT EXISTS PAR_NAMES (
+                    PAR_ID INTEGER PRIMARY KEY,
+                    PAR_NAME TEXT NOT NULL
+                );
+
+                -- 2. PARAMETER LIST - VALUES FOR EACH MODEL RUN
+                CREATE TABLE IF NOT EXISTS PAR_LIST (
+                    RUN_ID INTEGER NOT NULL,
+                    PAR_ID INTEGER NOT NULL,
+                    TEXT_VALUE TEXT,
+                    NUMERIC_VALUE REAL,
+                    PRIMARY KEY (RUN_ID, PAR_ID),
+                    FOREIGN KEY (PAR_ID) REFERENCES PAR_NAMES(PAR_ID)
+                );
+
+                -- 3. SORTED PARAMETERS FOR ANALYSIS
+                CREATE TABLE IF NOT EXISTS SORTED_PARAMETERS (
+                    ID INTEGER PRIMARY KEY,
+                    RUN_ID INTEGER NOT NULL,
+                    PAR_ID INTEGER NOT NULL,
+                    PARAMETER_VALUE REAL,
+                    FOREIGN KEY (PAR_ID) REFERENCES PAR_NAMES(PAR_ID)
+                );
+
+                -- 4. MODEL SIMULATION RESULTS
+                CREATE TABLE IF NOT EXISTS RESULTS (
+                    RUN INTEGER NOT NULL,
+                    ROW_NUMBER INTEGER NOT NULL,
+                    REACH TEXT,
+                    TERRESTRIAL_INPUT REAL,
+                    FLOW REAL,
+                    DATE_STAMP DATETIME,
+                    PRIMARY KEY (RUN, ROW_NUMBER)
+                );
+
+                -- 5. STATISTICAL COEFFICIENTS AND PERFORMANCE METRICS
+                CREATE TABLE IF NOT EXISTS COEFFICIENTS (
+                    RUN INTEGER NOT NULL,
+                    ROW_NUMBER INTEGER NOT NULL,
+                    REACH TEXT,
+                    PARAMETER TEXT,
+                    R2 REAL,
+                    NS REAL,
+                    LOG_NS REAL,
+                    RMSE REAL,
+                    RE REAL,
+                    AD REAL,
+                    VAR REAL,
+                    N REAL,
+                    N_RE REAL,
+                    SS REAL,
+                    LOG_SS REAL,
+                    DATE_STAMP DATETIME,
+                    PRIMARY KEY (RUN, ROW_NUMBER, REACH, PARAMETER)
+                );
+
+                -- 6. COEFFICIENT WEIGHTS FOR ANALYSIS
+                CREATE TABLE IF NOT EXISTS COEFFICIENT_WEIGHTS (
+                    COEFFICIENT_NAME TEXT PRIMARY KEY,
+                    COEFFICIENT_WEIGHT REAL NOT NULL
+                );
+
+                -- 7. INCA MODEL INPUT DATA
+                CREATE TABLE IF NOT EXISTS INCA_INPUTS (
+                    FILE_NAME TEXT NOT NULL,
+                    RUN INTEGER NOT NULL,
+                    ROW_NUMBER INTEGER NOT NULL,
+                    SMD REAL,
+                    HER REAL,
+                    T REAL,
+                    P REAL,
+                    DATE_STAMP DATETIME,
+                    PRIMARY KEY (FILE_NAME, RUN, ROW_NUMBER)
+                );
+
+                -- 8. OBSERVED DATA FOR MODEL VALIDATION
+                CREATE TABLE IF NOT EXISTS OBSERVATIONS (
+                    REACH TEXT NOT NULL,
+                    PARAMETER TEXT NOT NULL,
+                    VALUE REAL,
+                    QC TEXT,
+                    DATE_STAMP DATETIME,
+                    PRIMARY KEY (REACH, PARAMETER, DATE_STAMP)
+                );
+
+                -- 9. STATISTICAL ANALYSIS D-VALUES
+                CREATE TABLE IF NOT EXISTS D_VALUES (
+                    ID INTEGER PRIMARY KEY,
+                    RANK INTEGER,
+                    PAR_NAME TEXT,
+                    PAR_ID INTEGER,
+                    X_RANGE REAL,
+                    D REAL,
+                    Z REAL,
+                    P REAL,
+                    ADJUSTED_P REAL,
+                    FOREIGN KEY (PAR_ID) REFERENCES PAR_NAMES(PAR_ID)
+                );
+
+                -- 10. PARAMETER SENSITIVITY SUMMARY
+                CREATE TABLE IF NOT EXISTS PARAMETER_SENSITIVITY_SUMMARY (
+                    PAR_NAME TEXT NOT NULL,
+                    PAR_ID INTEGER PRIMARY KEY,
+                    D REAL,
+                    MIN_OF_NUMERIC_VALUE REAL,
+                    MAX_OF_NUMERIC_VALUE REAL,
+                    X_RANGE REAL,
+                    Z REAL,
+                    P REAL,
+                    FOREIGN KEY (PAR_ID) REFERENCES PAR_NAMES(PAR_ID)
+                );
+
+                -- 11. REACH/LOCATION LOOKUP TABLE
+                CREATE TABLE IF NOT EXISTS REACH_ID (
+                    ID_CODE INTEGER PRIMARY KEY,
+                    REACH TEXT UNIQUE NOT NULL
+                );
+
+                -- CREATE INDEXES FOR BETTER PERFORMANCE
+                CREATE INDEX IF NOT EXISTS IDX_PAR_LIST_RUN_ID ON PAR_LIST(RUN_ID);
+                CREATE INDEX IF NOT EXISTS IDX_PAR_LIST_PAR_ID ON PAR_LIST(PAR_ID);
+                CREATE INDEX IF NOT EXISTS IDX_SORTED_PARAMS_PAR_ID ON SORTED_PARAMETERS(PAR_ID);
+                CREATE INDEX IF NOT EXISTS IDX_SORTED_PARAMS_RUN_ID ON SORTED_PARAMETERS(RUN_ID);
+                CREATE INDEX IF NOT EXISTS IDX_RESULTS_RUN ON RESULTS(RUN);
+                CREATE INDEX IF NOT EXISTS IDX_RESULTS_REACH ON RESULTS(REACH);
+                CREATE INDEX IF NOT EXISTS IDX_COEFFICIENTS_RUN ON COEFFICIENTS(RUN);
+                CREATE INDEX IF NOT EXISTS IDX_COEFFICIENTS_REACH ON COEFFICIENTS(REACH);
+                CREATE INDEX IF NOT EXISTS IDX_INCA_INPUTS_RUN ON INCA_INPUTS(RUN);
+                CREATE INDEX IF NOT EXISTS IDX_OBSERVATIONS_REACH ON OBSERVATIONS(REACH);
+                CREATE INDEX IF NOT EXISTS IDX_D_VALUES_PAR_ID ON D_VALUES(PAR_ID);
+            ";
+
+            var command = new SQLiteCommand(createTablesScript, sqliteConnection);
+            command.ExecuteNonQuery();
+            
+            Console.WriteLine("SQLite tables created successfully.");
+        }using System;
 using System.Data;
 using System.Data.OleDb;
 using System.Data.SQLite;
@@ -37,17 +184,17 @@ namespace MC.DataMigration
                 CreateSQLiteDatabase();
                 
                 // Migrate each table
-                MigrateTable("ParNames", "SELECT ParID, ParName FROM ParNames");
-                MigrateTable("ParList", "SELECT RunID, ParID, TextValue, NumericValue FROM ParList");
-                MigrateTable("SortedParameters", "SELECT ID, RunID, ParID, ParameterValue FROM SortedParameters");
-                MigrateTable("Results", "SELECT RUN, RowNumber, Reach, TerrestrialInput, Flow, DateStamp FROM Results");
-                MigrateTable("Coefficients", "SELECT RUN, RowNumber, Reach, Parameter, R2, NS, LOG_NS, RMSE, RE, AD, VAR, N, N_RE, SS, LOG_SS, DateStamp FROM Coefficients");
-                MigrateTable("CoefficientWeights", "SELECT CoefficientName, CoefficientWeight FROM CoefficientWeights");
-                MigrateTable("INCAInputs", "SELECT FileName, RUN, RowNumber, SMD, HER, T, P, DateStamp FROM INCAInputs");
-                MigrateTable("Observations", "SELECT Reach, Parameter, Value, QC, DateStamp FROM Observations");
-                MigrateTable("DValues", "SELECT ID, Rank, ParName, ParID, xRange, D, z, p, AdjustedP FROM DValues");
-                MigrateTable("ParameterSensitivitySummary", "SELECT ParName, ParID, D, MinOfNumericValue, MaxOfNumericValue, xRange, z, p FROM ParameterSensitivitySummary");
-                MigrateTable("ReachID", "SELECT IDCode, Reach FROM ReachID");
+                MigrateTable("PAR_NAMES", "SELECT ParID, ParName FROM ParNames");
+                MigrateTable("PAR_LIST", "SELECT RunID, ParID, TextValue, NumericValue FROM ParList");
+                MigrateTable("SORTED_PARAMETERS", "SELECT ID, RunID, ParID, ParameterValue FROM SortedParameters");
+                MigrateTable("RESULTS", "SELECT RUN, RowNumber, Reach, TerrestrialInput, Flow, DateStamp FROM Results");
+                MigrateTable("COEFFICIENTS", "SELECT RUN, RowNumber, Reach, Parameter, R2, NS, LOG_NS, RMSE, RE, AD, VAR, N, N_RE, SS, LOG_SS, DateStamp FROM Coefficients");
+                MigrateTable("COEFFICIENT_WEIGHTS", "SELECT CoefficientName, CoefficientWeight FROM CoefficientWeights");
+                MigrateTable("INCA_INPUTS", "SELECT FileName, RUN, RowNumber, SMD, HER, T, P, DateStamp FROM INCAInputs");
+                MigrateTable("OBSERVATIONS", "SELECT Reach, Parameter, Value, QC, DateStamp FROM Observations");
+                MigrateTable("D_VALUES", "SELECT ID, Rank, ParName, ParID, xRange, D, z, p, AdjustedP FROM DValues");
+                MigrateTable("PARAMETER_SENSITIVITY_SUMMARY", "SELECT ParName, ParID, D, MinOfNumericValue, MaxOfNumericValue, xRange, z, p FROM ParameterSensitivitySummary");
+                MigrateTable("REACH_ID", "SELECT IDCode, Reach FROM ReachID");
                 
                 Console.WriteLine("Database migration completed successfully!");
             }

@@ -1061,45 +1061,45 @@ namespace MC
         private static string GetSchemaScript()
         {
             return @"
-                PRAGMA foreign_keys = ON;
+                PRAGMA FOREIGN_KEYS = ON;
 
-                CREATE TABLE IF NOT EXISTS ParNames (
-                    ParID INTEGER PRIMARY KEY,
-                    ParName TEXT NOT NULL
+                CREATE TABLE IF NOT EXISTS PAR_NAMES (
+                    PAR_ID INTEGER PRIMARY KEY,
+                    PAR_NAME TEXT NOT NULL
                 );
 
-                CREATE TABLE IF NOT EXISTS ParList (
-                    RunID INTEGER NOT NULL,
-                    ParID INTEGER NOT NULL,
-                    TextValue TEXT,
-                    NumericValue REAL,
-                    PRIMARY KEY (RunID, ParID),
-                    FOREIGN KEY (ParID) REFERENCES ParNames(ParID)
+                CREATE TABLE IF NOT EXISTS PAR_LIST (
+                    RUN_ID INTEGER NOT NULL,
+                    PAR_ID INTEGER NOT NULL,
+                    TEXT_VALUE TEXT,
+                    NUMERIC_VALUE REAL,
+                    PRIMARY KEY (RUN_ID, PAR_ID),
+                    FOREIGN KEY (PAR_ID) REFERENCES PAR_NAMES(PAR_ID)
                 );
 
-                CREATE TABLE IF NOT EXISTS SortedParameters (
+                CREATE TABLE IF NOT EXISTS SORTED_PARAMETERS (
                     ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    RunID INTEGER NOT NULL,
-                    ParID INTEGER NOT NULL,
-                    ParameterValue REAL,
-                    FOREIGN KEY (ParID) REFERENCES ParNames(ParID)
+                    RUN_ID INTEGER NOT NULL,
+                    PAR_ID INTEGER NOT NULL,
+                    PARAMETER_VALUE REAL,
+                    FOREIGN KEY (PAR_ID) REFERENCES PAR_NAMES(PAR_ID)
                 );
 
-                CREATE TABLE IF NOT EXISTS Results (
+                CREATE TABLE IF NOT EXISTS RESULTS (
                     RUN INTEGER NOT NULL,
-                    RowNumber INTEGER NOT NULL,
-                    Reach TEXT,
-                    TerrestrialInput REAL,
-                    Flow REAL,
-                    DateStamp DATETIME DEFAULT (datetime('now')),
-                    PRIMARY KEY (RUN, RowNumber)
+                    ROW_NUMBER INTEGER NOT NULL,
+                    REACH TEXT,
+                    TERRESTRIAL_INPUT REAL,
+                    FLOW REAL,
+                    DATE_STAMP DATETIME DEFAULT (DATETIME('NOW')),
+                    PRIMARY KEY (RUN, ROW_NUMBER)
                 );
 
-                CREATE TABLE IF NOT EXISTS Coefficients (
+                CREATE TABLE IF NOT EXISTS COEFFICIENTS (
                     RUN INTEGER NOT NULL,
-                    RowNumber INTEGER NOT NULL,
-                    Reach TEXT,
-                    Parameter TEXT,
+                    ROW_NUMBER INTEGER NOT NULL,
+                    REACH TEXT,
+                    PARAMETER TEXT,
                     R2 REAL,
                     NS REAL,
                     LOG_NS REAL,
@@ -1111,95 +1111,95 @@ namespace MC
                     N_RE REAL,
                     SS REAL,
                     LOG_SS REAL,
-                    DateStamp DATETIME DEFAULT (datetime('now')),
-                    PRIMARY KEY (RUN, RowNumber, Reach, Parameter)
+                    DATE_STAMP DATETIME DEFAULT (DATETIME('NOW')),
+                    PRIMARY KEY (RUN, ROW_NUMBER, REACH, PARAMETER)
                 );
 
-                CREATE TABLE IF NOT EXISTS CoefficientWeights (
-                    CoefficientName TEXT PRIMARY KEY,
-                    CoefficientWeight REAL NOT NULL
+                CREATE TABLE IF NOT EXISTS COEFFICIENT_WEIGHTS (
+                    COEFFICIENT_NAME TEXT PRIMARY KEY,
+                    COEFFICIENT_WEIGHT REAL NOT NULL
                 );
 
-                CREATE TABLE IF NOT EXISTS INCAInputs (
-                    FileName TEXT NOT NULL,
+                CREATE TABLE IF NOT EXISTS INCA_INPUTS (
+                    FILE_NAME TEXT NOT NULL,
                     RUN INTEGER NOT NULL,
-                    RowNumber INTEGER NOT NULL,
+                    ROW_NUMBER INTEGER NOT NULL,
                     SMD REAL,
                     HER REAL,
                     T REAL,
                     P REAL,
-                    DateStamp DATETIME DEFAULT (datetime('now')),
-                    PRIMARY KEY (FileName, RUN, RowNumber)
+                    DATE_STAMP DATETIME DEFAULT (DATETIME('NOW')),
+                    PRIMARY KEY (FILE_NAME, RUN, ROW_NUMBER)
                 );
 
-                CREATE TABLE IF NOT EXISTS Observations (
-                    Reach TEXT NOT NULL,
-                    Parameter TEXT NOT NULL,
-                    Value REAL,
+                CREATE TABLE IF NOT EXISTS OBSERVATIONS (
+                    REACH TEXT NOT NULL,
+                    PARAMETER TEXT NOT NULL,
+                    VALUE REAL,
                     QC TEXT,
-                    DateStamp DATETIME DEFAULT (datetime('now')),
-                    PRIMARY KEY (Reach, Parameter, DateStamp)
+                    DATE_STAMP DATETIME DEFAULT (DATETIME('NOW')),
+                    PRIMARY KEY (REACH, PARAMETER, DATE_STAMP)
                 );
 
-                CREATE TABLE IF NOT EXISTS DValues (
+                CREATE TABLE IF NOT EXISTS D_VALUES (
                     ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Rank INTEGER,
-                    ParName TEXT,
-                    ParID INTEGER,
-                    xRange REAL,
+                    RANK INTEGER,
+                    PAR_NAME TEXT,
+                    PAR_ID INTEGER,
+                    X_RANGE REAL,
                     D REAL,
-                    z REAL,
-                    p REAL,
-                    AdjustedP REAL,
-                    FOREIGN KEY (ParID) REFERENCES ParNames(ParID)
+                    Z REAL,
+                    P REAL,
+                    ADJUSTED_P REAL,
+                    FOREIGN KEY (PAR_ID) REFERENCES PAR_NAMES(PAR_ID)
                 );
 
-                CREATE TABLE IF NOT EXISTS ParameterSensitivitySummary (
-                    ParName TEXT NOT NULL,
-                    ParID INTEGER PRIMARY KEY,
+                CREATE TABLE IF NOT EXISTS PARAMETER_SENSITIVITY_SUMMARY (
+                    PAR_NAME TEXT NOT NULL,
+                    PAR_ID INTEGER PRIMARY KEY,
                     D REAL,
-                    MinOfNumericValue REAL,
-                    MaxOfNumericValue REAL,
-                    xRange REAL,
-                    z REAL,
-                    p REAL,
-                    FOREIGN KEY (ParID) REFERENCES ParNames(ParID)
+                    MIN_OF_NUMERIC_VALUE REAL,
+                    MAX_OF_NUMERIC_VALUE REAL,
+                    X_RANGE REAL,
+                    Z REAL,
+                    P REAL,
+                    FOREIGN KEY (PAR_ID) REFERENCES PAR_NAMES(PAR_ID)
                 );
 
-                CREATE TABLE IF NOT EXISTS ReachID (
-                    IDCode INTEGER PRIMARY KEY,
-                    Reach TEXT UNIQUE NOT NULL
+                CREATE TABLE IF NOT EXISTS REACH_ID (
+                    ID_CODE INTEGER PRIMARY KEY,
+                    REACH TEXT UNIQUE NOT NULL
                 );
 
-                -- Create all the statistical analysis views
-                CREATE VIEW IF NOT EXISTS ParStats AS
+                -- CREATE ALL THE STATISTICAL ANALYSIS VIEWS
+                CREATE VIEW IF NOT EXISTS PAR_STATS AS
                 SELECT 
-                    ParID,
-                    MIN(NumericValue) AS MinOfNumericValue,
-                    AVG(NumericValue) AS AvgOfNumericValue,
-                    MAX(NumericValue) AS MaxOfNumericValue
-                FROM ParList
-                WHERE NumericValue IS NOT NULL
-                GROUP BY ParID;
+                    PAR_ID,
+                    MIN(NUMERIC_VALUE) AS MIN_OF_NUMERIC_VALUE,
+                    AVG(NUMERIC_VALUE) AS AVG_OF_NUMERIC_VALUE,
+                    MAX(NUMERIC_VALUE) AS MAX_OF_NUMERIC_VALUE
+                FROM PAR_LIST
+                WHERE NUMERIC_VALUE IS NOT NULL
+                GROUP BY PAR_ID;
 
-                CREATE VIEW IF NOT EXISTS SampledPars AS
-                SELECT DISTINCT ParID
-                FROM ParList
-                WHERE NumericValue IS NOT NULL
-                ORDER BY ParID;
+                CREATE VIEW IF NOT EXISTS SAMPLED_PARS AS
+                SELECT DISTINCT PAR_ID
+                FROM PAR_LIST
+                WHERE NUMERIC_VALUE IS NOT NULL
+                ORDER BY PAR_ID;
 
-                -- Create indexes
-                CREATE INDEX IF NOT EXISTS idx_parlist_runid ON ParList(RunID);
-                CREATE INDEX IF NOT EXISTS idx_parlist_parid ON ParList(ParID);
-                CREATE INDEX IF NOT EXISTS idx_sortedparams_parid ON SortedParameters(ParID);
-                CREATE INDEX IF NOT EXISTS idx_sortedparams_runid ON SortedParameters(RunID);
-                CREATE INDEX IF NOT EXISTS idx_results_run ON Results(RUN);
-                CREATE INDEX IF NOT EXISTS idx_results_reach ON Results(Reach);
-                CREATE INDEX IF NOT EXISTS idx_coefficients_run ON Coefficients(RUN);
-                CREATE INDEX IF NOT EXISTS idx_coefficients_reach ON Coefficients(Reach);
-                CREATE INDEX IF NOT EXISTS idx_incainputs_run ON INCAInputs(RUN);
-                CREATE INDEX IF NOT EXISTS idx_observations_reach ON Observations(Reach);
-                CREATE INDEX IF NOT EXISTS idx_dvalues_parid ON DValues(ParID);
+                -- CREATE INDEXES
+                CREATE INDEX IF NOT EXISTS IDX_PAR_LIST_RUN_ID ON PAR_LIST(RUN_ID);
+                CREATE INDEX IF NOT EXISTS IDX_PAR_LIST_PAR_ID ON PAR_LIST(PAR_ID);
+                CREATE INDEX IF NOT EXISTS IDX_SORTED_PARAMS_PAR_ID ON SORTED_PARAMETERS(PAR_ID);
+                CREATE INDEX IF NOT EXISTS IDX_SORTED_PARAMS_RUN_ID ON SORTED_PARAMETERS(RUN_ID);
+                CREATE INDEX IF NOT EXISTS IDX_RESULTS_RUN ON RESULTS(RUN);
+                CREATE INDEX IF NOT EXISTS IDX_RESULTS_REACH ON RESULTS(REACH);
+                CREATE INDEX IF NOT EXISTS IDX_COEFFICIENTS_RUN ON COEFFICIENTS(RUN);
+                CREATE INDEX IF NOT EXISTS IDX_COEFFICIENTS_REACH ON COEFFICIENTS(REACH);
+                CREATE INDEX IF NOT EXISTS IDX_INCA_INPUTS_RUN ON INCA_INPUTS(RUN);
+                CREATE INDEX IF NOT EXISTS IDX_OBSERVATIONS_REACH ON OBSERVATIONS(REACH);
+                CREATE INDEX IF NOT EXISTS IDX_D_VALUES_PAR_ID ON D_VALUES(PAR_ID);
             ";
         }
     }

@@ -1,216 +1,216 @@
--- Access Database Queries Converted to SQLite
--- Original queries from mc - Copy.accdb converted to SQLite-compatible SQL
+-- ACCESS DATABASE QUERIES CONVERTED TO SQLITE
+-- ORIGINAL QUERIES FROM MC - COPY.ACCDB CONVERTED TO SQLITE-COMPATIBLE SQL
 
--- 101 Par Stats - Parameter statistics summary
-CREATE VIEW IF NOT EXISTS ParStats AS
+-- 101 PAR STATS - PARAMETER STATISTICS SUMMARY
+CREATE VIEW IF NOT EXISTS PAR_STATS AS
 SELECT 
-    ParID,
-    MIN(NumericValue) AS MinOfNumericValue,
-    AVG(NumericValue) AS AvgOfNumericValue,
-    MAX(NumericValue) AS MaxOfNumericValue
-FROM ParList
-WHERE NumericValue IS NOT NULL
-GROUP BY ParID;
+    PAR_ID,
+    MIN(NUMERIC_VALUE) AS MIN_OF_NUMERIC_VALUE,
+    AVG(NUMERIC_VALUE) AS AVG_OF_NUMERIC_VALUE,
+    MAX(NUMERIC_VALUE) AS MAX_OF_NUMERIC_VALUE
+FROM PAR_LIST
+WHERE NUMERIC_VALUE IS NOT NULL
+GROUP BY PAR_ID;
 
--- 102 Sampled Pars - Parameters selected for sampling/analysis
-CREATE VIEW IF NOT EXISTS SampledPars AS
-SELECT DISTINCT ParID
-FROM ParList
-WHERE NumericValue IS NOT NULL
-ORDER BY ParID;
+-- 102 SAMPLED PARS - PARAMETERS SELECTED FOR SAMPLING/ANALYSIS
+CREATE VIEW IF NOT EXISTS SAMPLED_PARS AS
+SELECT DISTINCT PAR_ID
+FROM PAR_LIST
+WHERE NUMERIC_VALUE IS NOT NULL
+ORDER BY PAR_ID;
 
--- 104 Parameter Ranges - Calculate parameter ranges for analysis
-CREATE VIEW IF NOT EXISTS ParameterRanges AS
+-- 104 PARAMETER RANGES - CALCULATE PARAMETER RANGES FOR ANALYSIS
+CREATE VIEW IF NOT EXISTS PARAMETER_RANGES AS
 SELECT 
-    sp.ParID,
-    MIN(sp.ID) AS MinOfID,
-    MAX(sp.ID) AS MaxOfID,
-    MIN(sp.ParameterValue) AS MinOfParameterValue,
-    MAX(sp.ParameterValue) AS MaxOfParameterValue,
-    (MAX(sp.ID) - MIN(sp.ID)) AS IDRange
-FROM SortedParameters sp
-INNER JOIN SampledPars ON sp.ParID = SampledPars.ParID
-GROUP BY sp.ParID;
+    SP.PAR_ID,
+    MIN(SP.ID) AS MIN_OF_ID,
+    MAX(SP.ID) AS MAX_OF_ID,
+    MIN(SP.PARAMETER_VALUE) AS MIN_OF_PARAMETER_VALUE,
+    MAX(SP.PARAMETER_VALUE) AS MAX_OF_PARAMETER_VALUE,
+    (MAX(SP.ID) - MIN(SP.ID)) AS ID_RANGE
+FROM SORTED_PARAMETERS SP
+INNER JOIN SAMPLED_PARS ON SP.PAR_ID = SAMPLED_PARS.PAR_ID
+GROUP BY SP.PAR_ID;
 
--- 105 Parameters with Offsets - Calculate parameter offsets for distribution analysis
-CREATE VIEW IF NOT EXISTS ParametersWithOffsets AS
+-- 105 PARAMETERS WITH OFFSETS - CALCULATE PARAMETER OFFSETS FOR DISTRIBUTION ANALYSIS
+CREATE VIEW IF NOT EXISTS PARAMETERS_WITH_OFFSETS AS
 SELECT 
-    sp.ID,
-    sp.RunID,
-    sp.ParID,
-    sp.ParameterValue,
-    pr.MinOfParameterValue,
-    pr.MaxOfParameterValue,
-    (sp.ParameterValue - pr.MinOfParameterValue) / 
-    (pr.MaxOfParameterValue - pr.MinOfParameterValue) AS Offset,
-    pr.IDRange AS Runs
-FROM SortedParameters sp
-INNER JOIN ParameterRanges pr ON sp.ParID = pr.ParID;
+    SP.ID,
+    SP.RUN_ID,
+    SP.PAR_ID,
+    SP.PARAMETER_VALUE,
+    PR.MIN_OF_PARAMETER_VALUE,
+    PR.MAX_OF_PARAMETER_VALUE,
+    (SP.PARAMETER_VALUE - PR.MIN_OF_PARAMETER_VALUE) / 
+    (PR.MAX_OF_PARAMETER_VALUE - PR.MIN_OF_PARAMETER_VALUE) AS OFFSET,
+    PR.ID_RANGE AS RUNS
+FROM SORTED_PARAMETERS SP
+INNER JOIN PARAMETER_RANGES PR ON SP.PAR_ID = PR.PAR_ID;
 
--- 106 Observed and Theoretical Offsets - Compare empirical vs theoretical distributions
-CREATE VIEW IF NOT EXISTS ObservedAndTheoreticalOffsets AS
+-- 106 OBSERVED AND THEORETICAL OFFSETS - COMPARE EMPIRICAL VS THEORETICAL DISTRIBUTIONS
+CREATE VIEW IF NOT EXISTS OBSERVED_AND_THEORETICAL_OFFSETS AS
 SELECT 
-    pwo.ParID,
-    pwo.Runs,
-    pwo.Offset / pwo.Runs AS ObservedCDF,
-    pwo.Offset AS TheoreticalCDF
-FROM ParametersWithOffsets pwo;
+    PWO.PAR_ID,
+    PWO.RUNS,
+    PWO.OFFSET / PWO.RUNS AS OBSERVED_CDF,
+    PWO.OFFSET AS THEORETICAL_CDF
+FROM PARAMETERS_WITH_OFFSETS PWO;
 
--- 107 Test Statistic - Calculate test statistics for distribution testing
-CREATE VIEW IF NOT EXISTS TestStatistic AS
+-- 107 TEST STATISTIC - CALCULATE TEST STATISTICS FOR DISTRIBUTION TESTING
+CREATE VIEW IF NOT EXISTS TEST_STATISTIC AS
 SELECT 
-    ParID,
-    MAX(ABS(TheoreticalCDF - ObservedCDF)) AS Test,
-    Runs,
-    TheoreticalCDF
-FROM ObservedAndTheoreticalOffsets
-GROUP BY ParID;
+    PAR_ID,
+    MAX(ABS(THEORETICAL_CDF - OBSERVED_CDF)) AS TEST,
+    RUNS,
+    THEORETICAL_CDF
+FROM OBSERVED_AND_THEORETICAL_OFFSETS
+GROUP BY PAR_ID;
 
--- 108 KS D Statistic - Kolmogorov-Smirnov D statistic calculation
-CREATE VIEW IF NOT EXISTS KSDStatistic AS
+-- 108 KS D STATISTIC - KOLMOGOROV-SMIRNOV D STATISTIC CALCULATION
+CREATE VIEW IF NOT EXISTS KSD_STATISTIC AS
 SELECT 
-    ts.ParID,
-    ts.Test AS D,
-    ts.Runs,
-    ts.TheoreticalCDF,
-    SQRT(ts.Runs * ts.Runs / (2.0 * ts.Runs)) AS RunTerm,
-    ts.Test * SQRT(ts.Runs * ts.Runs / (2.0 * ts.Runs)) AS xRange
-FROM TestStatistic ts;
+    TS.PAR_ID,
+    TS.TEST AS D,
+    TS.RUNS,
+    TS.THEORETICAL_CDF,
+    SQRT(TS.RUNS * TS.RUNS / (2.0 * TS.RUNS)) AS RUN_TERM,
+    TS.TEST * SQRT(TS.RUNS * TS.RUNS / (2.0 * TS.RUNS)) AS X_RANGE
+FROM TEST_STATISTIC TS;
 
--- 109 KS D Statistic Extended - Extended KS statistic with additional calculations
-CREATE VIEW IF NOT EXISTS KSDStatisticExtended AS
+-- 109 KS D STATISTIC EXTENDED - EXTENDED KS STATISTIC WITH ADDITIONAL CALCULATIONS
+CREATE VIEW IF NOT EXISTS KSD_STATISTIC_EXTENDED AS
 SELECT 
-    ks.ParID,
-    ks.D,
-    ks.xRange,
-    ks.RunTerm
-FROM KSDStatistic ks;
+    KS.PAR_ID,
+    KS.D,
+    KS.X_RANGE,
+    KS.RUN_TERM
+FROM KSD_STATISTIC KS;
 
--- 110 KS D and z - KS D statistic with z-score calculation
-CREATE VIEW IF NOT EXISTS KSDAndZ AS
+-- 110 KS D AND Z - KS D STATISTIC WITH Z-SCORE CALCULATION
+CREATE VIEW IF NOT EXISTS KSD_AND_Z AS
 SELECT 
-    kse.ParID,
-    kse.D,
-    kse.xRange,
-    kse.D * SQRT(kse.RunTerm * kse.RunTerm / (2.0 * kse.RunTerm)) + 0.12 + 0.11/SQRT(kse.RunTerm) AS z
-FROM KSDStatisticExtended kse;
+    KSE.PAR_ID,
+    KSE.D,
+    KSE.X_RANGE,
+    KSE.D * SQRT(KSE.RUN_TERM * KSE.RUN_TERM / (2.0 * KSE.RUN_TERM)) + 0.12 + 0.11/SQRT(KSE.RUN_TERM) AS Z
+FROM KSD_STATISTIC_EXTENDED KSE;
 
--- 111 pTerm1 - First term for p-value calculation
-CREATE VIEW IF NOT EXISTS pTerm1 AS
+-- 111 P_TERM1 - FIRST TERM FOR P-VALUE CALCULATION
+CREATE VIEW IF NOT EXISTS P_TERM1 AS
 SELECT 
-    kz.ParID,
-    kz.D,
-    kz.xRange,
-    kz.z,
-    EXP(-2.0 * kz.z * kz.z) AS pTerm1
-FROM KSDAndZ kz;
+    KZ.PAR_ID,
+    KZ.D,
+    KZ.X_RANGE,
+    KZ.Z,
+    EXP(-2.0 * KZ.Z * KZ.Z) AS P_TERM1
+FROM KSD_AND_Z KZ;
 
--- 112 pTerm2 - Second term for p-value calculation  
-CREATE VIEW IF NOT EXISTS pTerm2 AS
+-- 112 P_TERM2 - SECOND TERM FOR P-VALUE CALCULATION  
+CREATE VIEW IF NOT EXISTS P_TERM2 AS
 SELECT 
-    p1.ParID,
-    p1.D,
-    p1.xRange,
-    p1.z,
-    p1.pTerm1,
-    -1.0 * EXP(-2.0 * 4.0 * p1.z * p1.z) + p1.pTerm1 AS pTerm2
-FROM pTerm1 p1;
+    P1.PAR_ID,
+    P1.D,
+    P1.X_RANGE,
+    P1.Z,
+    P1.P_TERM1,
+    -1.0 * EXP(-2.0 * 4.0 * P1.Z * P1.Z) + P1.P_TERM1 AS P_TERM2
+FROM P_TERM1 P1;
 
--- 113 pTerm3 - Third term for p-value calculation
-CREATE VIEW IF NOT EXISTS pTerm3 AS
+-- 113 P_TERM3 - THIRD TERM FOR P-VALUE CALCULATION
+CREATE VIEW IF NOT EXISTS P_TERM3 AS
 SELECT 
-    p2.ParID,
-    p2.D,
-    p2.xRange,
-    p2.z,
-    EXP(-18.0 * p2.z * p2.z) + p2.pTerm2 AS pTerm3
-FROM pTerm2 p2;
+    P2.PAR_ID,
+    P2.D,
+    P2.X_RANGE,
+    P2.Z,
+    EXP(-18.0 * P2.Z * P2.Z) + P2.P_TERM2 AS P_TERM3
+FROM P_TERM2 P2;
 
--- 114 KS D z and p - Complete KS test results with p-values
-CREATE VIEW IF NOT EXISTS KSDZAndP AS
+-- 114 KS D Z AND P - COMPLETE KS TEST RESULTS WITH P-VALUES
+CREATE VIEW IF NOT EXISTS KSD_Z_AND_P AS
 SELECT 
-    p3.ParID,
-    p3.D,
-    p3.xRange,
-    p3.z,
-    -1.0 * EXP(-32.0 * p3.z * p3.z) + p3.pTerm3 AS p
-FROM pTerm3 p3;
+    P3.PAR_ID,
+    P3.D,
+    P3.X_RANGE,
+    P3.Z,
+    -1.0 * EXP(-32.0 * P3.Z * P3.Z) + P3.P_TERM3 AS P
+FROM P_TERM3 P3;
 
--- 115 KS D z and P with Names - KS test results with parameter names
-CREATE VIEW IF NOT EXISTS KSDZAndPWithNames AS
+-- 115 KS D Z AND P WITH NAMES - KS TEST RESULTS WITH PARAMETER NAMES
+CREATE VIEW IF NOT EXISTS KSD_Z_AND_P_WITH_NAMES AS
 SELECT 
-    pn.ParName,
-    kzp.ParID,
-    kzp.D,
-    sp.MinOfNumericValue,
-    sp.MaxOfNumericValue,
-    kzp.xRange,
-    kzp.z,
-    kzp.p
-FROM KSDZAndP kzp
-INNER JOIN ParNames pn ON kzp.ParID = pn.ParID
-INNER JOIN SampledPars sp_ref ON kzp.ParID = sp_ref.ParID
-INNER JOIN ParStats sp ON kzp.ParID = sp.ParID;
+    PN.PAR_NAME,
+    KZP.PAR_ID,
+    KZP.D,
+    SP.MIN_OF_NUMERIC_VALUE,
+    SP.MAX_OF_NUMERIC_VALUE,
+    KZP.X_RANGE,
+    KZP.Z,
+    KZP.P
+FROM KSD_Z_AND_P KZP
+INNER JOIN PAR_NAMES PN ON KZP.PAR_ID = PN.PAR_ID
+INNER JOIN SAMPLED_PARS SP_REF ON KZP.PAR_ID = SP_REF.PAR_ID
+INNER JOIN PAR_STATS SP ON KZP.PAR_ID = SP.PAR_ID;
 
--- 116 Statistics Summary - Overall statistics summary for parameters
-CREATE VIEW IF NOT EXISTS StatisticsSummary AS
+-- 116 STATISTICS SUMMARY - OVERALL STATISTICS SUMMARY FOR PARAMETERS
+CREATE VIEW IF NOT EXISTS STATISTICS_SUMMARY AS
 SELECT 
-    kzpn.ParName,
-    kzpn.ParID,
-    kzpn.p
-FROM KSDZAndPWithNames kzpn
-ORDER BY kzpn.p DESC, kzpn.ParID;
+    KZPN.PAR_NAME,
+    KZPN.PAR_ID,
+    KZPN.P
+FROM KSD_Z_AND_P_WITH_NAMES KZPN
+ORDER BY KZPN.P DESC, KZPN.PAR_ID;
 
--- 117 Parameter Summary to Plot - Data formatted for plotting/visualization
-CREATE VIEW IF NOT EXISTS ParameterSummaryToPlot AS
+-- 117 PARAMETER SUMMARY TO PLOT - DATA FORMATTED FOR PLOTTING/VISUALIZATION
+CREATE VIEW IF NOT EXISTS PARAMETER_SUMMARY_TO_PLOT AS
 SELECT 
-    ss.ParName,
-    ss.ParID,
-    ss.p,
-    kzpn.D,
-    kzpn.xRange,
-    kzpn.z,
-    kzpn.MinOfNumericValue,
-    kzpn.MaxOfNumericValue
-FROM StatisticsSummary ss
-INNER JOIN KSDZAndPWithNames kzpn ON ss.ParID = kzpn.ParID
-ORDER BY ss.p DESC;
+    SS.PAR_NAME,
+    SS.PAR_ID,
+    SS.P,
+    KZPN.D,
+    KZPN.X_RANGE,
+    KZPN.Z,
+    KZPN.MIN_OF_NUMERIC_VALUE,
+    KZPN.MAX_OF_NUMERIC_VALUE
+FROM STATISTICS_SUMMARY SS
+INNER JOIN KSD_Z_AND_P_WITH_NAMES KZPN ON SS.PAR_ID = KZPN.PAR_ID
+ORDER BY SS.P DESC;
 
--- Additional helper views for data analysis
+-- ADDITIONAL HELPER VIEWS FOR DATA ANALYSIS
 
--- Parameter List with Names - Join parameter values with names
-CREATE VIEW IF NOT EXISTS ParameterListWithNames AS
+-- PARAMETER LIST WITH NAMES - JOIN PARAMETER VALUES WITH NAMES
+CREATE VIEW IF NOT EXISTS PARAMETER_LIST_WITH_NAMES AS
 SELECT 
-    pl.RunID,
-    pl.ParID,
-    pn.ParName,
-    pl.TextValue,
-    pl.NumericValue
-FROM ParList pl
-INNER JOIN ParNames pn ON pl.ParID = pn.ParID;
+    PL.RUN_ID,
+    PL.PAR_ID,
+    PN.PAR_NAME,
+    PL.TEXT_VALUE,
+    PL.NUMERIC_VALUE
+FROM PAR_LIST PL
+INNER JOIN PAR_NAMES PN ON PL.PAR_ID = PN.PAR_ID;
 
--- Results Summary - Basic results summary by reach
-CREATE VIEW IF NOT EXISTS ResultsSummary AS
+-- RESULTS SUMMARY - BASIC RESULTS SUMMARY BY REACH
+CREATE VIEW IF NOT EXISTS RESULTS_SUMMARY AS
 SELECT 
-    Reach,
-    COUNT(*) AS RecordCount,
-    AVG(Flow) AS AvgFlow,
-    MIN(Flow) AS MinFlow,
-    MAX(Flow) AS MaxFlow,
-    AVG(TerrestrialInput) AS AvgTerrestrialInput
-FROM Results
-WHERE Flow IS NOT NULL
-GROUP BY Reach;
+    REACH,
+    COUNT(*) AS RECORD_COUNT,
+    AVG(FLOW) AS AVG_FLOW,
+    MIN(FLOW) AS MIN_FLOW,
+    MAX(FLOW) AS MAX_FLOW,
+    AVG(TERRESTRIAL_INPUT) AS AVG_TERRESTRIAL_INPUT
+FROM RESULTS
+WHERE FLOW IS NOT NULL
+GROUP BY REACH;
 
--- Coefficient Summary - Performance metrics summary
-CREATE VIEW IF NOT EXISTS CoefficientSummary AS
+-- COEFFICIENT SUMMARY - PERFORMANCE METRICS SUMMARY
+CREATE VIEW IF NOT EXISTS COEFFICIENT_SUMMARY AS
 SELECT 
-    Reach,
-    Parameter,
-    AVG(R2) AS AvgR2,
-    AVG(NS) AS AvgNS,
-    AVG(RMSE) AS AvgRMSE,
-    COUNT(*) AS RunCount
-FROM Coefficients
+    REACH,
+    PARAMETER,
+    AVG(R2) AS AVG_R2,
+    AVG(NS) AS AVG_NS,
+    AVG(RMSE) AS AVG_RMSE,
+    COUNT(*) AS RUN_COUNT
+FROM COEFFICIENTS
 WHERE R2 IS NOT NULL
-GROUP BY Reach, Parameter;
+GROUP BY REACH, PARAMETER;
